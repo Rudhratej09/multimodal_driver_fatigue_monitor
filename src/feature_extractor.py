@@ -17,6 +17,9 @@ window_time=10
 blink_history=[]
 ear_history=[]
 mar_history=[]
+EAR_thresh=0.2
+blink_state=0
+blink_start_time=0
 while True:
     ctime=time.time()
     fps=1/(ctime-ptime)
@@ -41,78 +44,118 @@ while True:
         right_low_eye_out=face[373]
         right_low_eye_in=face[380]
 
-    eye_points=[face[33],face[160],face[158],face[133],face[153],face[144],face[362],face[385],face[387],face[263],face[373],face[380]]
-    for i in eye_points:
-        cv2.circle(img,i,2,(255,0,255),-1)
+        eye_points=[face[33],face[160],face[158],face[133],face[153],face[144],face[362],face[385],face[387],face[263],face[373],face[380]]
+        for i in eye_points:
+            cv2.circle(img,i,2,(255,0,255),-1)
     
 
-    EAR_left=(abs_euclid_dist(left_up_eye_in,left_low_eye_in)+abs_euclid_dist(left_up_eye_out,left_low_eye_out))/(2*abs_euclid_dist(left_eye_out_corner,left_eye_in_corner))
-    EAR_right=(abs_euclid_dist(right_up_eye_in,right_low_eye_in)+abs_euclid_dist(right_up_eye_out,right_low_eye_out))/(2*abs_euclid_dist(right_eye_out_corner,right_eye_in_corner))
+        EAR_left=(abs_euclid_dist(left_up_eye_in,left_low_eye_in)+abs_euclid_dist(left_up_eye_out,left_low_eye_out))/(2*abs_euclid_dist(left_eye_out_corner,left_eye_in_corner))
+        EAR_right=(abs_euclid_dist(right_up_eye_in,right_low_eye_in)+abs_euclid_dist(right_up_eye_out,right_low_eye_out))/(2*abs_euclid_dist(right_eye_out_corner,right_eye_in_corner))
     
-    EAR_mean = (EAR_left + EAR_right) / 2
-    ear_history.append((time.time(), EAR_mean))
-    cv2.putText(img,f'EAR MEAN:{float(EAR_mean):.3f}',(20,90),cv2.FONT_HERSHEY_COMPLEX,1,(255,0,255),2)
-    cv2.putText(img,f'EAR LEFT:{float(EAR_left):.3f}',(20,120),cv2.FONT_HERSHEY_COMPLEX,1,(255,0,255),2)
-    cv2.putText(img,f'EAR RIGHT:{float(EAR_right):.3f}',(20,150),cv2.FONT_HERSHEY_COMPLEX,1,(255,0,255),2)
-    #poiints for mouth MAR
-    mouth_left_corner=face[61]
-    mouth_right_corner=face[291]
-    mouth_left_up_lip=face[78]
-    mouth_up_lip=face[13]
-    mouth_right_low_lip=face[308]
-    mouth_low_lip=face[14]
+        EAR_mean = (EAR_left + EAR_right) / 2
+        ear_history.append((time.time(), EAR_mean))
+        cv2.putText(img,f'EAR MEAN:{float(EAR_mean):.3f}',(20,90),cv2.FONT_HERSHEY_COMPLEX,1,(255,0,255),2)
+        cv2.putText(img,f'EAR LEFT:{float(EAR_left):.3f}',(20,120),cv2.FONT_HERSHEY_COMPLEX,1,(255,0,255),2)
+        cv2.putText(img,f'EAR RIGHT:{float(EAR_right):.3f}',(20,150),cv2.FONT_HERSHEY_COMPLEX,1,(255,0,255),2)
+        #poiints for mouth MAR
+        mouth_left_corner=face[61]
+        mouth_right_corner=face[291]
+        mouth_left_up_lip=face[78]
+        mouth_up_lip=face[13]
+        mouth_right_low_lip=face[308]
+        mouth_low_lip=face[14]
     
 
-    mouth_points=[face[61],face[291],face[78],face[13],face[308],face[14]]
-    for i in mouth_points:
-        cv2.circle(img,i,2,(255,0,255),-1)
-    MAR=(abs_euclid_dist(mouth_up_lip,mouth_low_lip)+abs_euclid_dist(mouth_left_up_lip,mouth_right_low_lip))/(2*abs_euclid_dist(mouth_left_corner,mouth_right_corner))
-    mar_history.append((time.time(), MAR))
+        mouth_points=[face[61],face[291],face[78],face[13],face[308],face[14]]
+        for i in mouth_points:
+            cv2.circle(img,i,2,(255,0,255),-1)
+        MAR=(abs_euclid_dist(mouth_up_lip,mouth_low_lip)+abs_euclid_dist(mouth_left_up_lip,mouth_right_low_lip))/(2*abs_euclid_dist(mouth_left_corner,mouth_right_corner))
+        mar_history.append((time.time(), MAR))
 
-    cv2.putText(img,f'MAR:{float(MAR):.3f}',(20,180),cv2.FONT_HERSHEY_COMPLEX,1,(255,0,255),2)
-    cv2.putText(img,f'FPS:{int(fps)}',(20,70),cv2.FONT_HERSHEY_COMPLEX,1,(255,0,255),2)
-    cv2.imshow("capture",img)
+        cv2.putText(img,f'MAR:{float(MAR):.3f}',(20,180),cv2.FONT_HERSHEY_COMPLEX,1,(255,0,255),2)
+        cv2.putText(img,f'FPS:{int(fps)}',(20,70),cv2.FONT_HERSHEY_COMPLEX,1,(255,0,255),2)
+        cv2.imshow("capture",img)
 
-    # window updates
-    #ear update
-    now=time.time()
-    temp=[]
-    for(i,j) in ear_history:
-        if now - i <= window_time:
-            temp.append((i, j))
-    ear_history=temp
-    #mar update
-    temp=[]
-    for(i,j) in mar_history:
-        if now - i <= window_time:
-            temp.append((i, j))
-    mar_history=temp
-    #blikn update
-    temp=[]
-    for(i,j) in blink_history:
-        if now - i <= window_time:
-            temp.append((i, j))
-    blink_history=temp
 
-    # value extraction
-    ear_values=[]
-    mar_values=[]
-    blink_times=[]
-    for (i,j) in ear_history:
-        ear_values.append(j)
+        #teporary blink logic 
+        now=time.time()
+        if EAR_mean<EAR_thresh and blink_state==0:
+            blink_state=1
+            blink_start_time=now
+        elif EAR_mean>=EAR_thresh and blink_state==1:
+            blink_state=0
+            blink_end_time=now
+            duration=blink_end_time-blink_start_time
+            blink_history.append((blink_end_time, duration))
+        # window updates
+        #ear update
+        now=time.time()
+        if len(ear_history)!=0:
+            temp=[]
+            for(i,j) in ear_history:
+                if now - i <= window_time:
+                    temp.append((i, j))
+            ear_history=temp
+        else:
+            print("please make sure your face is visible")
+        #mar update
+        if len(mar_history)!=0:
+            temp=[]
+            for(i,j) in mar_history:
+                if now - i <= window_time:
+                    temp.append((i, j))
+            mar_history=temp
+        else:
+            print("please make sure your face is visible")
+        #blikn update
+        if len(blink_history)!=0:
+            temp=[]
+            for(i,j) in blink_history:
+                if now - i <= window_time:
+                    temp.append((i, j))
+            blink_history=temp
+        else:
+            print("please make sure your face is visible")
 
-    for (i,j) in mar_history:
-        mar_values.append(j)
-    for (i,j) in blink_history:
-        blink_times.append(j)
-    #computing values
-    blink_count_10s = len(blink_times)
-    avg_blink_duration_10s = sum(blink_times)/blink_count_10s
-    EAR_min = min(ear_values)
-    EAR_var = np.var(ear_values)
-    MAR_mean = np.mean(mar_values)
-    MAR_var  = np.var(mar_values) 
+        # value extraction
+        ear_values=[]
+        mar_values=[]
+        blink_times=[]
 
+        for (i,j) in ear_history:
+            ear_values.append(j)
+
+        for (i,j) in mar_history:
+            mar_values.append(j)
+        for (i,j) in blink_history:
+            blink_times.append(j)
+        #computing values
+        blink_count_10s = len(blink_times)
+        if blink_count_10s>0:
+            avg_blink_duration_10s = sum(blink_times)/blink_count_10s
+        else:
+            avg_blink_duration_10s=0
+        if len(ear_values)>0:
+
+            EAR_min = min(ear_values)
+            
+        else:
+            EAR_min= 0
+            
+        if len(mar_values)>0:
+            MAR_mean = np.mean(mar_values)
+             
+        else:
+            MAR_mean=0
+            
+        if len(mar_values)>1:
+            MAR_var  = np.var(mar_values)
+        else:
+            MAR_var=0
+        if len(ear_values)>1:
+            EAR_var  = np.var(ear_values)
+        else:
+            EAR_var=0
 
 
     if cv2.waitKey(1) & 0xFF==ord('q'):
