@@ -5,8 +5,8 @@ import time
 import math
 import numpy as np
 def rotationMatrixToEulerAngles(R):
-    roll = math.atan2(R[1,0],R[1,1])
-    pitch = math.atan2(-R[1,2],math.sqrt(R[1,0]**2 + R[1,1]**2))
+    roll = math.atan2(R[1,0],R[0,0])
+    pitch = math.atan2(-R[2,0],math.sqrt(R[2,1]**2 + R[2,2]**2))
     yaw = math.atan2(R[2,1],R[2,2])
 
 
@@ -15,7 +15,6 @@ def rotationMatrixToEulerAngles(R):
         math.degrees(yaw),
         math.degrees(roll)
     )
-
 detector=FaceMeshDetection()
 cap=cv2.VideoCapture(0)
 ptime=0
@@ -154,13 +153,13 @@ while True:
         y=0.0
         if success:
             rotation_matrix_cp,_=cv2.Rodrigues(rotation_vector)#camera perspectivve rot. matrix
-            rotation_matrix_wp=rotation_matrix_cp.T# rot. matrix world perspective
-            if success:
-                R_cw, _ = cv2.Rodrigues(rotation_vector)
-                R_wc = R_cw.T
-
-                p, y, r = rotationMatrixToEulerAngles(R_wc)
-            
+            camp_to_worldp = np.array([
+            [ 0,  0,  1],   # X_world ← Z_cam
+            [-1,  0,  0],   # Y_world ← -X_cam
+            [ 0, -1,  0]    # Z_world ← -Y_cam
+            ], dtype=np.float64)
+            rotation_matrix_wp=rotation_matrix_cp@camp_to_worldp# rot. matrix world perspective
+            p,y,r=rotationMatrixToEulerAngles(rotation_matrix_wp)#pitch,roll,yaw
         cv2.putText(img,f"pitch:{p:.2f}",(20,210),cv2.FONT_HERSHEY_SIMPLEX,0.7,(0,255,0),2)
         cv2.putText(img,f"yaw:{y:.2f}",(20,240),cv2.FONT_HERSHEY_SIMPLEX,0.7,(0,255,0),2)
         cv2.putText(img,f"roll:{r:.2f}",(20,270),cv2.FONT_HERSHEY_SIMPLEX,0.7,(0,255,0),2)
