@@ -25,12 +25,14 @@ def abs_euclid_dist(point1,point2):
     return distance
 window_time=10
 blink_history=[]
-ear_history=[]
-mar_history=[]
-EAR_thresh=0.2
 blink_state=0
 blink_start_time=0
-
+BASELINE_WINDOW = 25
+blink_ratio_thresh=0.75
+ear_baseline_history = []
+mar_baseline_history = []
+ear_ratio_history=[]
+mar_ratio_history=[]
 # 3d refrence model for pnp(in mm)(nose tip,chin,left eye,right eye,left mouth corner,right mouth corner)
 refrence_3d_face=np.array([(0.0,0.0,0.0),(0,-63.6,-12.0),(-45.0,17.0,-20.0),(45.0,17.0,-20.0),(-30.0,-50.0,-12.0),(30.0,-50.0,-12.0)],dtype=np.float64)
 
@@ -71,10 +73,10 @@ while True:
 
         EAR_left=(abs_euclid_dist(left_up_eye_in,left_low_eye_in)+abs_euclid_dist(left_up_eye_out,left_low_eye_out))/(2*abs_euclid_dist(left_eye_out_corner,left_eye_in_corner))
         EAR_right=(abs_euclid_dist(right_up_eye_in,right_low_eye_in)+abs_euclid_dist(right_up_eye_out,right_low_eye_out))/(2*abs_euclid_dist(right_eye_out_corner,right_eye_in_corner))
-    
         EAR_mean = (EAR_left + EAR_right) / 2
-        ear_history.append((time.time(), EAR_mean))
-        cv2.putText(img,f'EAR MEAN:{float(EAR_mean):.3f}',(20,90),cv2.FONT_HERSHEY_COMPLEX,1,(255,0,255),2)
+        
+        
+        
         cv2.putText(img,f'EAR LEFT:{float(EAR_left):.3f}',(20,120),cv2.FONT_HERSHEY_COMPLEX,1,(255,0,255),2)
         cv2.putText(img,f'EAR RIGHT:{float(EAR_right):.3f}',(20,150),cv2.FONT_HERSHEY_COMPLEX,1,(255,0,255),2)
         #poiints for mouth MAR
@@ -90,19 +92,47 @@ while True:
         for i in mouth_points:
             cv2.circle(img,i,2,(255,0,255),-1)
         MAR=(abs_euclid_dist(mouth_up_lip,mouth_low_lip)+abs_euclid_dist(mouth_left_up_lip,mouth_right_low_lip))/(2*abs_euclid_dist(mouth_left_corner,mouth_right_corner))
-        mar_history.append((time.time(), MAR))
+        
 
         cv2.putText(img,f'MAR:{float(MAR):.3f}',(20,180),cv2.FONT_HERSHEY_COMPLEX,1,(255,0,255),2)
         cv2.putText(img,f'FPS:{int(fps)}',(20,70),cv2.FONT_HERSHEY_COMPLEX,1,(255,0,255),2)
         
+        #ear znd mar normalization
+        now = time.time()
+        ear_baseline_history.append((now, EAR_mean))
+        mar_baseline_history.append((now, MAR))
+        temp = []
+        for (t, v) in ear_baseline_history:
+            if now - t <= BASELINE_WINDOW:
+                temp.append((t, v))
+        ear_baseline_history = temp
+        temp = []
+        for (t, v) in mar_baseline_history:
+            if now - t <= BASELINE_WINDOW:
+                temp.append((t, v))
+        mar_baseline_history = temp
+        
+        if len(ear_baseline_history) > 5:
+            ear_baseline = np.mean([v for (_, v) in ear_baseline_history])
+        else:
+            ear_baseline = EAR_mean  # fallback
 
-
-        #teporary blink logic 
+        if len(mar_baseline_history) > 5:
+            mar_baseline = np.mean([v for (_, v) in mar_baseline_history])
+        else:
+            mar_baseline = MAR
+        EAR_ratio = EAR_mean / (ear_baseline + 1e-6)
+        MAR_ratio = MAR / (mar_baseline + 1e-6)
+        
+        ear_ratio_history.append((now, EAR_ratio))
+        mar_ratio_history.append((now, MAR_ratio))
+        #blink logic using ratios
+        
         now=time.time()
-        if EAR_mean<EAR_thresh and blink_state==0:
+        if EAR_ratio<blink_ratio_thresh and blink_state==0:
             blink_state=1
             blink_start_time=now
-        elif EAR_mean>=EAR_thresh and blink_state==1:
+        elif EAR_ratio>=blink_ratio_thresh and blink_state==1:
             blink_state=0
             blink_end_time=now
             duration=blink_end_time-blink_start_time
@@ -110,21 +140,21 @@ while True:
         # window updates
         #ear update
         now=time.time()
-        if len(ear_history)!=0:
+        if len(ear_ratio_history)!=0:
             temp=[]
-            for(i,j) in ear_history:
+            for(i,j) in ear_ratio_history:
                 if now - i <= window_time:
                     temp.append((i, j))
-            ear_history=temp
+            ear_ratio_history=temp
         else:
             print("please make sure your face is visible")
         #mar update
-        if len(mar_history)!=0:
+        if len(mar_ratio_history)!=0:
             temp=[]
-            for(i,j) in mar_history:
+            for(i,j) in mar_ratio_history:
                 if now - i <= window_time:
                     temp.append((i, j))
-            mar_history=temp
+            mar_ratio_history=temp
         else:
             print("please make sure your face is visible")
         #blikn update
@@ -169,10 +199,10 @@ while True:
         mar_values=[]
         blink_times=[]
 
-        for (i,j) in ear_history:
+        for (i,j) in ear_ratio_history:
             ear_values.append(j)
 
-        for (i,j) in mar_history:
+        for (i,j) in mar_ratio_history:
             mar_values.append(j)
         for (i,j) in blink_history:
             blink_times.append(j)
