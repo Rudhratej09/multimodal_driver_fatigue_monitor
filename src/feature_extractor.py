@@ -4,6 +4,8 @@ import mediapipe as mp
 import time
 import math
 import numpy as np
+import csv
+import os
 def rotationMatrixToEulerAngles(R):
     roll = math.atan2(R[1,0],R[1,1])
     pitch = math.atan2(-R[1,2],math.sqrt(R[1,0]**2 + R[1,1]**2))
@@ -37,7 +39,25 @@ mar_ratio_history=[]
 
 # 3d refrence model for pnp(in mm)(nose tip,chin,left eye,right eye,left mouth corner,right mouth corner)
 refrence_3d_face=np.array([(0.0,0.0,0.0),(0,-63.6,-12.0),(-45.0,17.0,-20.0),(45.0,17.0,-20.0),(-30.0,-50.0,-12.0),(30.0,-50.0,-12.0)],dtype=np.float64)
+#csv logging 
+LOG_INTERVAL = 10  # seconds
+last_log_time = time.time()
+BASE_DIR = "data"#for reusability
+BASE_NAME = "test_feature_log"
+EXT = ".csv"
+os.makedirs(BASE_DIR, exist_ok=True)
+def get_next_log_path():
+    num = 1
+    while True:
+        path = os.path.join(BASE_DIR, f"{BASE_NAME}_{num}{EXT}")
+        if not os.path.exists(path):
+            return path
+        num += 1## to combat overwriting of files
 
+CSV_LOG_PATH=get_next_log_path()
+csv_file=open(CSV_LOG_PATH,"w",newline="")
+csv_writer=csv.writer(csv_file)
+csv_writer.writerow(["timestamp","EAR_min","EAR_var","MAR_mean","MAR_var","blink_count_10s","avg_blink_duration_10s","pitch","roll"])
 while True:
     ctime=time.time()
     fps=1/(ctime-ptime)
@@ -240,9 +260,14 @@ while True:
             EAR_var  = np.var(ear_values)
         else:
             EAR_var=0
-
+        now = time.time()
+        if now-last_log_time>=LOG_INTERVAL:
+            csv_writer.writerow([time.time(),EAR_min,EAR_var,MAR_mean,MAR_var,blink_count_10s,avg_blink_duration_10s,p,r])
+            csv_file.flush()
+            last_log_time=now
 
     if cv2.waitKey(1) & 0xFF==ord('q'):
         break
 cv2.destroyAllWindows()
 cap.release()
+csv_file.close()
