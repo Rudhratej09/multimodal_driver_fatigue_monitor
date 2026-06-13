@@ -4,3 +4,15 @@ __pycache__/
 *.avi
 data/raw/*
 data/processed/*
+
+# Model weights (too large — download separately)
+*.pth
+*.pkl
+
+# Training videos
+*.mov
+*.mp4
+*.avi
+
+# Old unused files
+src/feature_extractor.py

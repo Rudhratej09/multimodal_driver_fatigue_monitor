@@ -24,7 +24,7 @@ import numpy as np
 import csv
 import os
 from PIL import Image
-
+CNN_MODEL_PATH='/media/rudhratej/linux_data/projects/personal/multimodal_driver_fatigue_monitor/src/mrl_best_model.pth'
 
 try:
     import torch
